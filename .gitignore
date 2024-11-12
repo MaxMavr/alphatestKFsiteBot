@@ -1,0 +1,9 @@
+venv/
+.idea/
+.env
+
+test.py
+API_TOKEN.py
+phrases.json
+
+DB/
