@@ -1,15 +1,15 @@
 import asyncio
-from random import randint
 import os
+from random import randint
 import json
-import random
 from aiogram.enums import ContentType
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import CommandStart, Command, BaseFilter
-from aiogram.types import Message
-from aiogram.utils.keyboard import ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import Message, CallbackQuery
+from aiogram.fsm.context import FSMContext
 from db_interface import *
-
+from aiogram.fsm.state import State, StatesGroup
+import keyboards as kb
 
 # PHASALO ON
 try:
@@ -37,11 +37,17 @@ with open(f'{os.path.dirname(__file__)}/phrases.json', 'r', encoding="utf-8") as
     phrases: dict = json.load(file)
 
 
+class Preset(StatesGroup):
+    system = State()
+    device = State()
+    browser = State()
+
+
 class Isban(BaseFilter):
     @staticmethod
-    async def check(userid: int) -> bool:
-        isban = check_user_ban_status(userid)
-        return isban == 1
+    async def check(user_id: int) -> bool:
+        is_ban = check_user_ban_status(user_id)
+        return is_ban == 1
 
     async def __call__(self, message: Message) -> bool:
         return await self.check(message.from_user.id)
@@ -49,9 +55,9 @@ class Isban(BaseFilter):
 
 class Isadmin(BaseFilter):
     @staticmethod
-    async def check(userid: int) -> bool:
-        isadmin = check_user_admin_status(userid)
-        return isadmin == 1 or Issuperadmin.check(userid)
+    async def check(user_id: int) -> bool:
+        is_admin = check_user_admin_status(user_id)
+        return is_admin == 1 or Issuperadmin.check(user_id)
 
     async def __call__(self, message: Message) -> bool:
         if message.chat.type != 'private':
@@ -70,22 +76,17 @@ class Issuperadmin(BaseFilter):
         return await self.check(message.from_user.id)
 
 
-async def default_msg(message: Message):
-    await message.answer(
-        phrases["default_answers"][randint(0, len(phrases["default_answers"]) - 1)])
-
-
 async def ban_msg(message: Message):
     await message.answer(
         phrases["ban_answers"][randint(0, len(phrases["ban_answers"]) - 1)])
 
 
-async def take_command_arguments(message: Message) -> list:
+async def get_cmd_args(message: Message) -> list:
     return message.text.split()[1:] or [None]
 
 
-async def check_command_to_id(message: Message) -> int:
-    userid = await take_command_arguments(message)
+async def get_cmd_id(message: Message) -> int:
+    userid = await get_cmd_args(message)
 
     userid = userid[0]
 
@@ -99,7 +100,7 @@ async def check_command_to_id(message: Message) -> int:
 
     userid = int(userid)
 
-    if len(get_user_from_id(userid)) == 0:
+    if not is_user_exists(userid):
         await message.answer(phrases['err_user_not_exist'])
         return -1
 
