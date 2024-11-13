@@ -85,7 +85,7 @@ async def get_cmd_args(message: Message) -> list:
     return message.text.split()[1:] or [None]
 
 
-async def get_cmd_id(message: Message) -> int:
+async def get_cmd_user_id(message: Message) -> int:
     userid = await get_cmd_args(message)
 
     userid = userid[0]

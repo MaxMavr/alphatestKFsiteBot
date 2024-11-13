@@ -1,6 +1,5 @@
 from config import *
 
-
 '''
 Команды для обычных пользователей
 '''
@@ -29,68 +28,63 @@ async def cmd_help(message: Message):
 
 @dp.message(Command(commands='alpha'))  # /alpha
 async def cmd_help(message: Message):
-    await message.answer(phrases["alpha"])
+    await message.answer(phrases["alpha"], reply_markup=kb.site)
 
 
-# async def edit_msg(user_id: int, msg_id: int, msg: str):
-#     space = await search_phrase(msg)
-#
-#     if space is not None:
-#         await bot.edit_message_text(chat_id=user_id,
-#                                     message_id=msg_id,
-#                                     disable_web_page_preview=True,
-#                                     text=await make_msg(space),
-#                                     reply_markup=await make_inline_kb(space['kb']))
-#     else:
-#         await bot.edit_message_text(chat_id=user_id,
-#                                     message_id=msg_id,
-#                                     text=F"Поле {msg + ' ' if msg.isdigit() else ''}не найдено!")
-#
-#
-# @dp.callback_query(Callback())
-# async def fill_preset(callback: CallbackQuery, state: FSMContext):
-#     await callback.answer()
-#     await state.set_state(Preset.system)
-#     await bot.send_message(callback.from_user.id, 'Заполним пресет настроек\n'
-#                                                   '<code>'
-#                                                   '> <b>Система</b>: \n'
-#                                                   '  Устройство: \n'
-#                                                   '  Браузер: '
-#                                                   '</code>')
-#
-#
-# @dp.message(state=Preset.system)
-# async def process_color(message: Message, state: FSMContext):
-#     user_color = message.text
-#     await state.update_data(color=user_color)  # Сохраняем ответ
-#     await Preset.  # Переходим к следующему вопросу
-#     await message.reply("Какое ваше любимое животное?")  # Задаём второй вопрос
-#
-#
-# @dp.message_handler(state=Form.waiting_for_animal)
-# async def process_animal(message: types.Message, state: FSMContext):
-#     user_animal = message.text
-#     await state.update_data(animal=user_animal)  # Сохраняем ответ
-#     await Form.next()  # Переходим к следующему вопросу
-#     await message.reply("Какое ваше любимое блюдо?")  # Задаём третий вопрос
-#
-# @dp.message_handler(state=Form.waiting_for_food)
-# async def process_food(message: types.Message, state: FSMContext):
-#     user_food = message.text
-#     await state.update_data(food=user_food)  # Сохраняем ответ
-#
-#     # Получаем все данные
-#     data = await state.get_data()
-#     color = data.get('color')
-#     animal = data.get('animal')
-#     food = data.get('food')
-#
-#     await message.reply(f"Спасибо за заполнение формы! 🎉\n"
-#                          f"Ваш любимый цвет: {color}\n"
-#                          f"Ваше любимое животное: {animal}\n"
-#                          f"Ваше любимое блюдо: {food}")
-#
-#     await state.finish()  # Завершаем состояние
+@dp.message(Command(commands='del_form'))  # /del_form
+async def cmd_del_form(message: Message):
+    presets = get_presets_from_user(message.from_user.id)
+    kb_del_presets = await kb.make_del_presets_kb(presets)
+    await message.answer(phrases['del_presets'], reply_markup=kb_del_presets)
+
+
+async def show_preset(state: FSMContext) -> Message:
+    cur_state = await state.get_state()
+    data = await state.get_data()
+    edit_message_id = data.get('edit_message_id')
+    edit_chat_id = data.get('edit_chat_id')
+    system = data.get('system')
+    device = data.get('device')
+    browser = data.get('browser')
+
+    if None in [system, device, browser]:
+        edit_kb = kb.preset
+        text_message = phrases['filling_presets']
+    else:
+        edit_kb = kb.fill_preset
+        text_message = phrases['fill_presets']
+
+    if cur_state == 'Preset:system':
+        text_message += f'▶️ <b>Система</b> {"" if system is None else system}\n'
+    else:
+        text_message += f'    Система {"" if system is None else system}\n'
+
+    if cur_state == 'Preset:device':
+        text_message += f'▶️ <b>Устройство</b> {"" if device is None else device}\n'
+    else:
+        text_message += f'    Устройство {"" if device is None else device}\n'
+
+    if cur_state == 'Preset:browser':
+        text_message += f'▶️ <b>Браузер</b> {"" if browser is None else browser}\n'
+    else:
+        text_message += f'    Браузер {"" if browser is None else browser}\n'
+
+    return await bot.edit_message_text(
+        chat_id=edit_chat_id,
+        message_id=edit_message_id,
+        text=text_message,
+        reply_markup=edit_kb
+    )
+
+
+@dp.callback_query(F.data == 'add_preset')
+async def fill_preset(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+    await state.set_state(Preset.system)
+
+    message = await bot.send_message(callback.from_user.id, phrases['empty_presets'], reply_markup=kb.preset)
+    await state.update_data(edit_message_id=message.message_id)
+    await state.update_data(edit_chat_id=message.chat.id)
 
 
 '''
@@ -143,12 +137,12 @@ async def cmd_getcoms(message: Message):
 
 @dp.message(Command(commands='kiss'), Issuperadmin())  # /kiss
 async def cmd_delete_admin(message: Message):
-    userid = await get_cmd_id(message)
+    userid = await get_cmd_user_id(message)
 
     if userid == -1:
         return
 
-    if not Isadmin.check(userid):
+    if not await Isadmin.check(userid):
         await message.answer(phrases['err_user_not_admin'])
         return
 
@@ -159,7 +153,7 @@ async def cmd_delete_admin(message: Message):
 
 @dp.message(Command(commands='banana'), Issuperadmin())  # /banana
 async def cmd_delete_admin(message: Message):
-    userid = await get_cmd_id(message)
+    userid = await get_cmd_user_id(message)
 
     if userid == -1:
         return
@@ -171,12 +165,12 @@ async def cmd_delete_admin(message: Message):
 
 @dp.message(Command(commands='banana'), Isadmin())  # /banana
 async def cmd_delete_admin(message: Message):
-    userid = await get_cmd_id(message)
+    userid = await get_cmd_user_id(message)
 
     if userid == -1:
         return
 
-    if Isadmin.check(userid):
+    if await Isadmin.check(userid):
         await message.answer(phrases['err_user_admin'])
         return
 
@@ -184,32 +178,125 @@ async def cmd_delete_admin(message: Message):
     await message.answer(phrases["ban_user"])
 
 
-@dp.message(F.text, Isadmin())
-async def catch_admin_text(message: Message):
-    await message.answer(phrases['default_answers_admin'])
+# @dp.message(F.text, Isadmin())
+# async def catch_admin_text(message: Message):
+#     await message.answer(phrases['default_answers_admin'])
+
+
+@dp.message(Preset.system)
+async def fill_preset(message: Message, state: FSMContext):
+    await state.update_data(system=message.text)
+    await state.set_state(Preset.device)
+    await show_preset(state)
+
+
+@dp.message(Preset.device)
+async def fill_preset(message: Message, state: FSMContext):
+    await state.update_data(device=message.text)
+    await state.set_state(Preset.browser)
+    await show_preset(state)
+
+
+@dp.message(Preset.browser)
+async def fill_preset(message: Message, state: FSMContext):
+    await state.update_data(browser=message.text)
+    await state.set_state(Preset.system)
+    await show_preset(state)
+
+
+@dp.callback_query(F.data == 'goto_system')
+async def fill_preset(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+    await state.set_state(Preset.system)
+    await show_preset(state)
+
+
+@dp.callback_query(F.data == 'goto_device')
+async def fill_preset(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+    await state.set_state(Preset.device)
+    await show_preset(state)
+
+
+@dp.callback_query(F.data == 'goto_browser')
+async def fill_preset(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+    await state.set_state(Preset.browser)
+    await show_preset(state)
+
+
+@dp.callback_query(F.data == 'end_preset')
+async def fill_preset(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+    data = await state.get_data()
+    edit_message_id = data.get('edit_message_id')
+    edit_chat_id = data.get('edit_chat_id')
+    system = data.get('system')
+    device = data.get('device')
+    browser = data.get('browser')
+    await state.clear()
+
+    text_message = f'<b>Сохранили форму</b>\n\n' \
+                   f'    <b>Система</b> {data.get("system")}\n' \
+                   f'    Устройство {data.get("device")}\n' \
+                   f'    Браузер {data.get("browser")}\n'
+
+    add_preset(callback.from_user.id, system, device, browser)
+    presets = get_presets_from_user(callback.from_user.id)
+
+    print(presets)
+
+    await bot.edit_message_text(
+        chat_id=edit_chat_id,
+        message_id=edit_message_id,
+        text=text_message,
+        reply_markup=None
+    )
+
+
+@dp.callback_query(F.data.startswith('preset_'))
+async def cmd_start(callback: CallbackQuery):
+    await callback.answer()
+    preset_id = int(callback.data.replace('preset_', ''))
+    print(preset_id)
+
+
+@dp.callback_query(F.data.startswith('del_preset'))
+async def catch_del_preset(callback: CallbackQuery):
+    await callback.answer()
+    presets = get_presets_from_user(callback.from_user.id)
+    preset_id = int(callback.data.replace('del_preset_', ''))
+    del_preset(preset_id)
+
+    kb_del_presets = await kb.make_del_presets_kb(presets)
+
+    if len(presets) == 0:
+        text_message = phrases['del_presets_null']
+    elif len(presets) == 1:
+        text_message = phrases['del_presets_one']
+    else:
+        text_message = phrases['del_presets']
+
+    await bot.edit_message_text(
+        chat_id=callback.message.chat.id,
+        message_id=callback.message.message_id,
+        text=text_message,
+        reply_markup=kb_del_presets
+    )
 
 
 @dp.message(F.content_type.in_({ContentType.TEXT,
                                 ContentType.PHOTO,
                                 ContentType.VOICE,
                                 ContentType.VIDEO}))
-async def catch_default(message: Message):
+async def catch_bug(message: Message):
     presets = get_presets_from_user(message.from_user.id)
 
-    print(presets)
-
-    if len(presets) == 0:
+    if presets is None:
         await message.reply(f"{phrases['no_presets']}", reply_markup=kb.no_presets)
-
-
-@dp.message(F.text)
-async def catch_text(message: Message):
-    presets = get_presets_from_user(message.from_user.id)
-
-    print(presets)
-
-    if len(presets) == 0:
-        await message.reply(f"{phrases['no_presets']}", reply_markup=kb.no_presets)
+    else:
+        kb_have_presets = await kb.make_presets_kb(presets)
+        await message.reply(f"{phrases['have_presets']}", reply_markup=kb_have_presets)
 
 
 async def main():

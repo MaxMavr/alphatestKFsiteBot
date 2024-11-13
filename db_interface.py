@@ -37,7 +37,8 @@ con = sqlite3.connect(PRESETS_DB)
 cursor_presetsDB = con.cursor()
 cursor_presetsDB.execute('''
     CREATE TABLE IF NOT EXISTS presets (
-        user_id INTEGER PRIMARY KEY NOT NULL,
+        id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
         system TEXT NOT NULL DEFAULT 'system',
         device TEXT NOT NULL DEFAULT 'device',
         browser TEXT NOT NULL DEFAULT 'browser'
@@ -187,31 +188,44 @@ def check_user_ban_status(user_id: int) -> int:
 
 
 # Пресеты / presets
-def get_presets_from_user(user_id: int) -> Tuple:
+def get_presets_from_user(user_id: int) -> List[Tuple]:
     with sqlite3.connect(PRESETS_DB) as db:
         cursor = db.cursor()
         cursor.execute("SELECT * FROM presets WHERE user_id = ?", (user_id,))
+        return cursor.fetchall()
+
+
+def get_preset_from_user_and_id(preset_id: int, user_id: int) -> Tuple:
+    with sqlite3.connect(PRESETS_DB) as db:
+        cursor = db.cursor()
+        cursor.execute("SELECT (system, device, browser) FROM presets WHERE id = ? AND user_id = ?", (preset_id, user_id,))
         return cursor.fetchone()
 
 
-def del_preset(user_id: int, system: str, device: str, browser: str):
+def del_preset(preset_id: int):
     with sqlite3.connect(PRESETS_DB) as db:
         cursor = db.cursor()
-        cursor.execute("DELETE FROM presets"
-                       "WHERE user_id = ? AND system = ? AND device = ? AND browser = ?",
-                       (user_id, system, device, browser))
+        cursor.execute("DELETE FROM presets WHERE id = ?", (preset_id, ))
         db.commit()
 
 
 def add_preset(user_id: int, system: str, device: str, browser: str):
     with sqlite3.connect(PRESETS_DB) as db:
         cursor = db.cursor()
+
+        cursor.execute("SELECT MAX(id) FROM presets WHERE user_id = ?", (user_id,))
+        max_id = cursor.fetchone()[0]
+
+        if max_id is None:
+            max_id = 0
+
         cursor.execute(
-            'INSERT INTO presets (user_id, system, device, browser)'
-            'VALUES (?, ?, ?, ?)',
-            (user_id, system, device, browser)
+            'INSERT INTO presets (id, user_id, system, device, browser) '
+            'VALUES (?, ?, ?, ?, ?)',
+            (max_id + 1, user_id, system, device, browser)
         )
         db.commit()
+
 
 if __name__ == '__main__':
     pass
