@@ -7,8 +7,8 @@ from config import *
 
 @dp.message(CommandStart())  # /start
 async def cmd_start(message: Message):
-    add_user(message.from_user.id, message.from_user.username)
-    await message.answer(text=phrases["start"])
+    if not users.add(message.from_user.id, message.from_user.username):
+        await message.answer(text=phrases["start"])
 
 
 @dp.message(Isban())
@@ -33,12 +33,20 @@ async def cmd_help(message: Message):
 
 @dp.message(Command(commands='del_form'))  # /del_form
 async def cmd_del_form(message: Message):
-    presets = get_presets_from_user(message.from_user.id)
+    presets = db.get_presets_from_user(message.from_user.id)
     kb_del_presets = await kb.make_del_presets_kb(presets)
-    await message.answer(phrases['del_presets'], reply_markup=kb_del_presets)
+
+    if len(presets) == 0:
+        text_message = phrases['del_presets_none']
+    elif len(presets) == 1:
+        text_message = phrases['del_presets_one']
+    else:
+        text_message = phrases['del_presets']
+
+    await message.answer(text_message, reply_markup=kb_del_presets)
 
 
-async def show_preset(state: FSMContext) -> Message:
+async def show_preset(state: FSMContext) -> None:
     cur_state = await state.get_state()
     data = await state.get_data()
     edit_message_id = data.get('edit_message_id')
@@ -69,7 +77,7 @@ async def show_preset(state: FSMContext) -> Message:
     else:
         text_message += f'    Браузер {"" if browser is None else browser}\n'
 
-    return await bot.edit_message_text(
+    await bot.edit_message_text(
         chat_id=edit_chat_id,
         message_id=edit_message_id,
         text=text_message,
@@ -94,16 +102,15 @@ async def fill_preset(callback: CallbackQuery, state: FSMContext):
 
 @dp.message(Command(commands='root'), Isadmin())  # /root
 async def cmd_demote_admin(message: Message):
-    upd_user_admin_status(message.from_user.id, 0)
+    db.upd_user_admin_status(message.from_user.id, 0)
     await message.answer(phrases['dem_admin'])
 
 
 @dp.message(Command(commands='root'))  # /root
 async def cmd_add_admin(message: Message):
     password = await get_cmd_args(message)
-
     if password[0] == PASSWORD:
-        upd_user_admin_status(message.from_user.id, 1)
+        db.upd_user_admin_status(message.from_user.id, 1)
         await message.answer(phrases['new_admin'])
 
 
@@ -114,6 +121,49 @@ async def cmd_get_phrases(message: Message):
         await message.answer(phrases[phrase])
     await message.answer(f'<b>/getcoms</b>')
     await cmd_getcoms(message)
+
+
+@dp.message(Command(commands='get_bugs'), Isadmin())  # /get_bugs
+async def cmd_get_phrases(message: Message):
+    bugs = db.get_all_bugs()
+    # Todo Сделать страницы и красивое отображение
+    await message.answer(str(bugs))
+
+
+@dp.message(Command(commands='get_fix_bugs'), Isadmin())  # /get_fix_bugs
+async def cmd_get_phrases(message: Message):
+    nonfix_bugs = db.get_nonfix_bugs()
+    # Todo Сделать страницы и красивое отображение
+    await message.answer(str(nonfix_bugs))
+
+
+@dp.message(Command(commands='get_user_bugs'), Isadmin())  # /get_fix_bugs
+async def cmd_get_phrases(message: Message):
+    userid = await get_cmd_user_id(message)
+    # Todo Сделать страницы и красивое отображение
+    if userid == -1:
+        return
+
+
+    bug = db.get_bug_from_id()
+    # Todo Сделать страницы и красивое отображение
+    await message.answer(str(nonfix_bugs))
+
+
+@dp.message(Command(commands='get_bug'), Isadmin())  # /get_bug
+async def cmd_get_phrases(message: Message):
+    bug_id = await get_cmd_bug_id(message)
+    # Todo Сделать страницы и красивое отображение
+    if userid == -1:
+        return
+
+    bug = db.get_bug_from_id()
+
+    await bot.forward_message(chat_id=message.chat.id, from_chat_id=message.chat.id, message_id=message.message_id)
+
+
+    # Todo Сделать страницы и красивое отображение
+    await message.answer(str(nonfix_bugs))
 
 
 @dp.message(Command(commands='getcoms'), Isadmin())  # /getcoms
@@ -146,7 +196,7 @@ async def cmd_delete_admin(message: Message):
         await message.answer(phrases['err_user_not_admin'])
         return
 
-    upd_user_admin_status(userid, 0)
+    db.upd_user_admin_status(userid, 0)
     await bot.send_message(chat_id=userid, text=phrases["kiss_admin"])
     await message.answer(phrases["del_admin"])
 
@@ -158,8 +208,8 @@ async def cmd_delete_admin(message: Message):
     if userid == -1:
         return
 
-    upd_user_admin_status(userid, 0)
-    upd_user_ban_status(userid, 1)
+    db.upd_user_admin_status(userid, 0)
+    db.upd_user_ban_status(userid, 1)
     await message.answer(phrases["ban_user"])
 
 
@@ -174,7 +224,7 @@ async def cmd_delete_admin(message: Message):
         await message.answer(phrases['err_user_admin'])
         return
 
-    upd_user_ban_status(userid, 1)
+    db.upd_user_ban_status(userid, 1)
     await message.answer(phrases["ban_user"])
 
 
@@ -237,12 +287,12 @@ async def fill_preset(callback: CallbackQuery, state: FSMContext):
     await state.clear()
 
     text_message = f'<b>Сохранили форму</b>\n\n' \
-                   f'    <b>Система</b> {data.get("system")}\n' \
-                   f'    Устройство {data.get("device")}\n' \
-                   f'    Браузер {data.get("browser")}\n'
+                   f'    Система {system}\n' \
+                   f'    Устройство {device}\n' \
+                   f'    Браузер {browser}\n'
 
-    add_preset(callback.from_user.id, system, device, browser)
-    presets = get_presets_from_user(callback.from_user.id)
+    db.add_preset(callback.from_user.id, system, device, browser)
+    presets = db.get_presets_from_user(callback.from_user.id)
 
     print(presets)
 
@@ -264,9 +314,9 @@ async def cmd_start(callback: CallbackQuery):
 @dp.callback_query(F.data.startswith('del_preset'))
 async def catch_del_preset(callback: CallbackQuery):
     await callback.answer()
-    presets = get_presets_from_user(callback.from_user.id)
+    presets = db.get_presets_from_user(callback.from_user.id)
     preset_id = int(callback.data.replace('del_preset_', ''))
-    del_preset(preset_id)
+    db.del_preset(preset_id)
 
     kb_del_presets = await kb.make_del_presets_kb(presets)
 
@@ -290,7 +340,7 @@ async def catch_del_preset(callback: CallbackQuery):
                                 ContentType.VOICE,
                                 ContentType.VIDEO}))
 async def catch_bug(message: Message):
-    presets = get_presets_from_user(message.from_user.id)
+    presets = db.get_presets_from_user(message.from_user.id)
 
     if presets is None:
         await message.reply(f"{phrases['no_presets']}", reply_markup=kb.no_presets)

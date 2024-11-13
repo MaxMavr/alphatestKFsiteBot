@@ -7,8 +7,11 @@ from aiogram import Bot, Dispatcher, F
 from aiogram.filters import CommandStart, Command, BaseFilter
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
-from db_interface import *
 from aiogram.fsm.state import State, StatesGroup
+
+import preset_db_interface as presets
+import user_db_interface as users
+import bug_db_interface as bugs
 import keyboards as kb
 
 # PHASALO ON
@@ -43,21 +46,19 @@ class Preset(StatesGroup):
     browser = State()
 
 
-class Isban(BaseFilter):
+class IsBaned(BaseFilter):
     @staticmethod
     async def check(user_id: int) -> bool:
-        is_ban = check_user_ban_status(user_id)
-        return is_ban == 1
+        return users.is_baned(user_id)
 
     async def __call__(self, message: Message) -> bool:
         return await self.check(message.from_user.id)
 
 
-class Isadmin(BaseFilter):
+class IsAdmin(BaseFilter):
     @staticmethod
     async def check(user_id: int) -> bool:
-        is_admin = check_user_admin_status(user_id)
-        return is_admin == 1 or Issuperadmin.check(user_id)
+        return users.is_admin(user_id) or await IsSuperAdmin.check(user_id)
 
     async def __call__(self, message: Message) -> bool:
         if message.chat.type != 'private':
@@ -65,10 +66,10 @@ class Isadmin(BaseFilter):
         return await self.check(message.from_user.id)
 
 
-class Issuperadmin(BaseFilter):
+class IsSuperAdmin(BaseFilter):
     @staticmethod
-    async def check(userid) -> bool:
-        return userid == MAIN_ADMIN_ID
+    async def check(user_id) -> bool:
+        return user_id == MAIN_ADMIN_ID
 
     async def __call__(self, message: Message) -> bool:
         if message.chat.type != 'private':
@@ -76,7 +77,7 @@ class Issuperadmin(BaseFilter):
         return await self.check(message.from_user.id)
 
 
-async def ban_msg(message: Message):
+async def ban_message(message: Message):
     await message.answer(
         phrases["ban_answers"][randint(0, len(phrases["ban_answers"]) - 1)])
 
@@ -85,23 +86,37 @@ async def get_cmd_args(message: Message) -> list:
     return message.text.split()[1:] or [None]
 
 
-async def get_cmd_user_id(message: Message) -> int:
-    userid = await get_cmd_args(message)
+async def get_cmd_digit(message: Message) -> int:
+    number = await get_cmd_args(message)
 
-    userid = userid[0]
+    number = number[0]
 
-    if userid is None:
+    if number is None:
         await message.answer(phrases['err_empty_argument'])
         return -1
 
-    if not userid.isdigit():
+    if not number.isdigit():
         await message.answer(phrases['err_not_digit'])
         return -1
 
-    userid = int(userid)
+    return int(number)
 
-    if not is_user_exists(userid):
+
+async def get_cmd_user_id(message: Message) -> int:
+    user_id = await get_cmd_digit(message)
+
+    if not users.is_exists(user_id):
         await message.answer(phrases['err_user_not_exist'])
         return -1
 
-    return userid
+    return user_id
+
+
+async def get_cmd_bug_id(message: Message) -> int:
+    message_id = await get_cmd_digit(message)
+
+    if not bugs.is_exists(message_id):
+        await message.answer(phrases['err_bug_not_exist'])
+        return -1
+
+    return message_id
