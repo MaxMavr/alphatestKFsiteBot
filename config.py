@@ -3,38 +3,26 @@ import os
 from random import randint
 import json
 from aiogram.enums import ContentType
-from aiogram import Bot, Dispatcher, F
+from aiogram import Bot, Dispatcher, Router, F
 from aiogram.filters import CommandStart, Command, BaseFilter
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
-import preset_db_interface as presets
-import user_db_interface as users
-import bug_db_interface as bugs
+import db_interfaces.bugs as bugs
+import db_interfaces.presets as presets
+import db_interfaces.users as users
 import keyboards as kb
 
-# PHASALO ON
-try:
-    from dotenv import load_dotenv, find_dotenv
-
-    load_dotenv(find_dotenv())
-    API_TOKEN: str = os.getenv('TOKEN')
-    PASSWORD: str = os.getenv('PASSWORD')
-    MAIN_ADMIN_ID: int = int(os.getenv('MAIN_ADMIN_ID'))
-    BOT_ID: int = int(os.getenv('BOT_ID'))
-except Exception:
-    from API_TOKEN import *
+from API_TOKEN import *
 
 try:
     bot: Bot = Bot(token=API_TOKEN, parse_mode='HTML')
-except Exception:
+except Exception as e:
     from aiogram.client.default import DefaultBotProperties
 
     bot: Bot = Bot(token=API_TOKEN, default=DefaultBotProperties(parse_mode='HTML'))
-# PHASALO OFF
 
-dp: Dispatcher = Dispatcher()
 
 with open(f'{os.path.dirname(__file__)}/phrases.json', 'r', encoding="utf-8") as file:
     phrases: dict = json.load(file)
