@@ -2,6 +2,28 @@ from config import *
 rt: Router = Router()
 
 
+MAX_NUMBER_CHAR = 80
+
+
+async def send_bug(message: Message, preset_id: int,):
+    description = message.caption if message.text is None else message.text
+
+    if description is None:
+        description = 'Нема'
+    else:
+        if len(description) > MAX_NUMBER_CHAR:
+            description = description[:MAX_NUMBER_CHAR] + '...'
+
+    bugs.add(
+        user_id=message.chat.id,
+        message_id=message.message_id,
+        preset_id=preset_id,
+        description=description
+    )
+
+    await message.answer(phrases['add_bug'])
+
+
 async def show_preset(state: FSMContext) -> None:
     cur_state = await state.get_state()
     data = await state.get_data()
@@ -45,6 +67,13 @@ async def show_preset(state: FSMContext) -> None:
 async def start_fill_preset(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     await state.set_state(Preset.system)
+
+    await bot.edit_message_text(
+        chat_id=callback.message.chat.id,
+        message_id=callback.message.message_id,
+        text=callback.message.text,
+        reply_markup=None
+    )
 
     message = await bot.send_message(callback.from_user.id, phrases['empty_presets'], reply_markup=kb.preset)
     await state.update_data(edit_message_id=message.message_id)
@@ -98,6 +127,7 @@ async def end_fill_preset(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     data = await state.get_data()
     edit_message_id = data.get('edit_message_id')
+    bug_message: Message = data.get('bug_message')
     edit_chat_id = data.get('edit_chat_id')
     system = data.get('system')
     device = data.get('device')
@@ -108,7 +138,9 @@ async def end_fill_preset(callback: CallbackQuery, state: FSMContext):
                    f'    Система {system}\n' \
                    f'    Устройство {device}\n' \
                    f'    Браузер {browser}\n'
-    presets.add(callback.from_user.id, system, device, browser)
+    preset_id = presets.add(callback.from_user.id, system, device, browser)
+
+    await send_bug(bug_message, preset_id)
 
     await bot.edit_message_text(
         chat_id=edit_chat_id,
@@ -119,7 +151,18 @@ async def end_fill_preset(callback: CallbackQuery, state: FSMContext):
 
 
 @rt.callback_query(F.data.startswith('preset_'))
-async def call_preset(callback: CallbackQuery):
+async def call_preset(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     preset_id = int(callback.data.replace('preset_', ''))
-    print(preset_id)
+    data = await state.get_data()
+    bug_message: Message = data.get('bug_message')
+    await state.clear()
+
+    await bot.edit_message_text(
+        chat_id=callback.message.chat.id,
+        message_id=callback.message.message_id,
+        text=callback.message.text,
+        reply_markup=None
+    )
+
+    await send_bug(bug_message, preset_id)

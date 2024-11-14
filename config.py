@@ -1,24 +1,27 @@
-import asyncio
+from API_TOKEN import *
+
 import os
-from random import randint
 import json
-from aiogram.enums import ContentType
+from random import randint
+from math import ceil
+
+import asyncio
 from aiogram import Bot, Dispatcher, Router, F
 from aiogram.filters import CommandStart, Command, BaseFilter
 from aiogram.types import Message, CallbackQuery
-from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
+from aiogram.fsm.context import FSMContext
+from aiogram.enums import ContentType
 
 import db_interfaces.bugs as bugs
 import db_interfaces.presets as presets
 import db_interfaces.users as users
 import keyboards as kb
 
-from API_TOKEN import *
 
 try:
     bot: Bot = Bot(token=API_TOKEN, parse_mode='HTML')
-except Exception as e:
+except TypeError:
     from aiogram.client.default import DefaultBotProperties
 
     bot: Bot = Bot(token=API_TOKEN, default=DefaultBotProperties(parse_mode='HTML'))
@@ -93,6 +96,9 @@ async def get_cmd_digit(message: Message) -> int:
 async def get_cmd_user_id(message: Message) -> int:
     user_id = await get_cmd_digit(message)
 
+    if user_id == -1:
+        return -1
+
     if not users.is_exists(user_id):
         await message.answer(phrases['err_user_not_exist'])
         return -1
@@ -102,6 +108,9 @@ async def get_cmd_user_id(message: Message) -> int:
 
 async def get_cmd_bug_id(message: Message) -> int:
     message_id = await get_cmd_digit(message)
+
+    if message_id == -1:
+        return -1
 
     if not bugs.is_exists(message_id):
         await message.answer(phrases['err_bug_not_exist'])
