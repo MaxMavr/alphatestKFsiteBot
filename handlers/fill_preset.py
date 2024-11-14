@@ -1,11 +1,11 @@
 from config import *
-rt: Router = Router()
 
+rt: Router = Router()
 
 MAX_NUMBER_CHAR = 80
 
 
-async def send_bug(message: Message, preset_id: int,):
+async def send_bug(message: Message, preset_id: int, ):
     description = message.caption if message.text is None else message.text
 
     if description is None:
@@ -36,6 +36,14 @@ async def show_preset(state: FSMContext) -> None:
     if None in [system, device, browser]:
         edit_kb = kb.preset
         text_message = phrases['filling_presets']
+
+        if cur_state == 'Preset:system':
+            text_message += phrases['example_system']
+        if cur_state == 'Preset:device':
+            text_message += phrases['example_device']
+        if cur_state == 'Preset:browser':
+            text_message += phrases['example_browser']
+
     else:
         edit_kb = kb.fill_preset
         text_message = phrases['fill_presets']

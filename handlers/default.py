@@ -26,6 +26,7 @@ async def cmd_help(message: Message):
 @rt.message(Command(commands='alpha'))  # /alpha
 async def cmd_alpha(message: Message):
     await message.answer(phrases["alpha"], reply_markup=kb.site)
+    await message.answer(''.join(phrases["q&a"]))
 
 
 @rt.message(Command(commands='del_form'))  # /del_form
