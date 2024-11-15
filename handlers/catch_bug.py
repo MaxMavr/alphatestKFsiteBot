@@ -4,9 +4,11 @@ rt: Router = Router()
 
 @rt.message(F.content_type.in_({ContentType.TEXT,
                                 ContentType.PHOTO,
+                                ContentType.AUDIO,
                                 ContentType.VOICE,
                                 ContentType.VIDEO,
-                                ContentType.DOCUMENT}))
+                                ContentType.DOCUMENT,
+                                ContentType.VIDEO_NOTE}))
 async def catch_bug(message: Message, state: FSMContext):
     data = await state.get_data()
     bug_message: Message = data.get('bug_message')

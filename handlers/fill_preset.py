@@ -5,14 +5,32 @@ rt: Router = Router()
 MAX_NUMBER_CHAR = 80
 
 
-async def send_bug(message: Message, preset_id: int, ):
-    description = message.caption if message.text is None else message.text
+async def send_bug(message: Message, preset_id: int):
+    description = ''
 
-    if description is None:
-        description = 'Нема'
-    else:
-        if len(description) > MAX_NUMBER_CHAR:
-            description = description[:MAX_NUMBER_CHAR] + '...'
+    if message.video:
+        description += '📼 '
+    if message.audio:
+        description += '🗣 '
+    if message.video_note:
+        description += '📼 '
+    if message.document:
+        description += '📄 '
+    if message.voice:
+        description += '🗣 '
+    if message.photo:
+        description += '📷 '
+
+    msg_text = message.caption if message.caption else message.text
+
+    if msg_text:
+        if description == '':
+            description = '(._.)'
+        else:
+            description += msg_text[:MAX_NUMBER_CHAR]
+
+        if len(msg_text) > MAX_NUMBER_CHAR:
+            description += '...'
 
     bugs.add(
         user_id=message.chat.id,

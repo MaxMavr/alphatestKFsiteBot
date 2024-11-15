@@ -93,7 +93,7 @@ async def cmd_promote(message: Message):
         await message.answer(phrases['new_admin'])
 
 
-@rt.message(Command(commands='get_phrases'), IsAdmin())  # /get_phrases
+@rt.message(Command(commands='phrases'), IsAdmin())  # /phrases
 async def cmd_get_phrases(message: Message):
     for phrase in phrases.keys():
         await message.answer(f'<b>{phrase}</b>')
@@ -102,7 +102,7 @@ async def cmd_get_phrases(message: Message):
     await cmd_getcoms(message)
 
 
-@rt.message(Command(commands='get_users'), IsAdmin())  # /get_users
+@rt.message(Command(commands='users'), IsAdmin())  # /users
 async def cmd_get_users(message: Message):
     users_page, count_pages = await split_list2page(users.get_all(), PAGE_SIZE_USER, 1)
 
@@ -113,7 +113,7 @@ async def cmd_get_users(message: Message):
     await message.answer(text_message, reply_markup=users_kb)
 
 
-@rt.message(Command(commands='get_admins'), IsAdmin())  # /get_admins
+@rt.message(Command(commands='admins'), IsAdmin())  # /admins
 async def cmd_get_admins(message: Message):
     admins_page, count_pages = await split_list2page(users.get_admins(), PAGE_SIZE_USER, 1)
 
@@ -124,7 +124,7 @@ async def cmd_get_admins(message: Message):
     await message.answer(text_message, reply_markup=admins_kb)
 
 
-@rt.message(Command(commands='get_bugs'), IsAdmin())  # /get_bugs
+@rt.message(Command(commands='bugs'), IsAdmin())  # /bugs
 async def cmd_get_bugs(message: Message):
     fix_count, all_count = bugs.stat()
     bugs_page, count_pages = await split_list2page(bugs.get_all(), PAGE_SIZE_BUG, 1)
@@ -136,7 +136,7 @@ async def cmd_get_bugs(message: Message):
     await message.answer(text_message, reply_markup=bugs_kb)
 
 
-@rt.message(Command(commands='get_fixs'), IsAdmin())  # /get_fixs
+@rt.message(Command(commands='fixs'), IsAdmin())  # /fixs
 async def cmd_get_fixs(message: Message):
     fixs_page, count_pages = await split_list2page(bugs.get_fix(), PAGE_SIZE_BUG, 1)
 
@@ -147,7 +147,7 @@ async def cmd_get_fixs(message: Message):
     await message.answer(text_message, reply_markup=fixs_kb)
 
 
-@rt.message(Command(commands='get_user_bugs'), IsAdmin())  # /get_user_bugs
+@rt.message(Command(commands='user_bugs'), IsAdmin())  # /user_bugs
 async def cmd_get_user_bugs(message: Message):
     user_id = await get_cmd_user_id(message)
 
@@ -210,7 +210,7 @@ async def call_goto_page_users(callback: CallbackQuery):
     await bot.edit_message_text(chat_id=callback.message.chat.id, message_id=callback.message.message_id, text=text_message, reply_markup=page_kb)
 
 
-@rt.message(Command(commands='get_bug'), IsAdmin())  # /get_bug
+@rt.message(Command(commands='bug'), IsAdmin())  # /bug
 async def cmd_get_bug(message: Message):
     bug_id = await get_cmd_bug_id(message)
     if bug_id == -1:
@@ -229,7 +229,7 @@ async def cmd_get_bug(message: Message):
         message_id=message_id)
 
 
-@rt.message(Command(commands='del_bug'), IsAdmin())  # /del_bug
+@rt.message(Command(commands='del'), IsAdmin())  # /del
 async def cmd_del_bug(message: Message):
     bug_id = await get_cmd_bug_id(message)
     if bug_id == -1:
@@ -238,7 +238,7 @@ async def cmd_del_bug(message: Message):
     await message.answer(phrases['del_bug'])
 
 
-@rt.message(Command(commands='fix_bug'), IsAdmin())  # /fix_bug
+@rt.message(Command(commands='fix'), IsAdmin())  # /fix
 async def cmd_del_bug(message: Message):
     bug_id = await get_cmd_bug_id(message)
     if bug_id == -1:
@@ -262,16 +262,16 @@ async def cmd_del_bug(message: Message):
 async def cmd_getcoms(message: Message):
     await message.answer(
         "<b>Посмотреть</b>\n"
-        "/get_users — пользователей\n"
-        "/get_admins — админов\n"
-        "/get_phrases — фразы бота\n"
-        "/get_bugs — все баги\n"
-        "/get_fixs — только те баги, которые нужно исправить\n"
-        "/get_user_bugs {id пользователя} — баги пользователя\n"
-        "/get_bug {id бага} — баг\n\n"
+        "/users — пользователей\n"
+        "/admins — админов\n"
+        "/phrases — фразы бота\n"
+        "/bugs — все баги\n"
+        "/fixs — только те баги, которые нужно исправить\n"
+        "/user_bugs {id пользователя} — баги пользователя\n"
+        "/bug {id бага} — баг\n\n"
         "<b>Сделать</b>\n"
-        "/fix_bug {id бага} — поменять состояние бага\n"
-        "/del_bug {id бага} — удалить баг\n"
+        "/fix {id бага} — поменять состояние бага\n"
+        "/del {id бага} — удалить баг\n"
         "/banana {id пользователя} — забанить пользователя\n"
         "/kiss {id пользователя} — удалить админа\n\n"
         "<b>Прочее</b>\n"
@@ -284,18 +284,18 @@ async def cmd_getcoms(message: Message):
 async def cmd_getcoms(message: Message):
     await message.answer(
         "<b>Посмотреть</b>\n"
-        "/get_users — пользователей\n"
-        "/get_admins — админов\n"
-        "/get_bugs — все баги\n"
-        "/get_fixs — только те баги, которые нужно исправить\n"
-        "/get_user_bugs {id пользователя} — баги пользователя\n"
-        "/get_bug {id бага} — баг\n\n"
+        "/users — пользователей\n"
+        "/admins — админов\n"
+        "/bugs — все баги\n"
+        "/fixs — только те баги, которые нужно исправить\n"
+        "/user_bugs {id пользователя} — баги пользователя\n"
+        "/bug {id бага} — баг\n\n"
         "<b>Сделать</b>\n"
-        "/fix_bug {id бага} — поменять состояние бага\n"
-        "/del_bug {id бага} — удалить баг\n"
+        "/fix {id бага} — поменять состояние бага\n"
+        "/del {id бага} — удалить баг\n"
         "/banana {id пользователя} — забанить пользователя\n"
         "<b>Прочее</b>\n"
-        "/getcoms — посмотреть команды (Это сообщение)\n\n"
+        "/getcoms — посмотреть команды (Это сообщение)\n"
         "/root — уйти из админов\n"
     )
 

@@ -1,7 +1,6 @@
 from API_TOKEN import *
 
 import os
-import json
 from random import randint
 from math import ceil
 
@@ -12,6 +11,8 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
 from aiogram.enums import ContentType
+
+from init_config import phrases
 
 import db_interfaces.bugs as bugs
 import db_interfaces.presets as presets
@@ -25,10 +26,6 @@ except TypeError:
     from aiogram.client.default import DefaultBotProperties
 
     bot: Bot = Bot(token=API_TOKEN, default=DefaultBotProperties(parse_mode='HTML'))
-
-
-with open(f'{os.path.dirname(__file__)}/phrases.json', 'r', encoding="utf-8") as file:
-    phrases: dict = json.load(file)
 
 
 class Preset(StatesGroup):
