@@ -5,6 +5,29 @@ rt: Router = Router()
 MAX_NUMBER_CHAR = 80
 
 
+async def check_state(message: Message = None,
+                      callback: CallbackQuery = None,
+                      state: FSMContext = None) -> bool:
+
+    data = await state.get_data()
+
+    if not data.get('bug_message'):
+        if callback:
+            await bot.edit_message_text(
+                chat_id=callback.message.chat.id,
+                message_id=callback.message.message_id,
+                text=phrases['err_end_session'],
+                reply_markup=None
+            )
+
+        elif message:
+            await message.answer(phrases['err_end_session'],
+                                 reply_markup=None)
+        return False
+
+    return True
+
+
 async def send_bug(message: Message, preset_id: int):
     description = ''
 
@@ -24,10 +47,7 @@ async def send_bug(message: Message, preset_id: int):
     msg_text = message.caption if message.caption else message.text
 
     if msg_text:
-        if description == '':
-            description = '(._.)'
-        else:
-            description += msg_text[:MAX_NUMBER_CHAR]
+        description += msg_text[:MAX_NUMBER_CHAR]
 
         if len(msg_text) > MAX_NUMBER_CHAR:
             description += '...'
@@ -51,35 +71,34 @@ async def show_preset(state: FSMContext) -> None:
     device = data.get('device')
     browser = data.get('browser')
 
+    state_status = cur_state.replace('Preset:', '')
+
     if None in [system, device, browser]:
         edit_kb = kb.preset
         text_message = phrases['filling_presets']
-
-        if cur_state == 'Preset:system':
-            text_message += phrases['example_system']
-        if cur_state == 'Preset:device':
-            text_message += phrases['example_device']
-        if cur_state == 'Preset:browser':
-            text_message += phrases['example_browser']
-
+        text_message += phrases[f'example_{state_status}']
     else:
         edit_kb = kb.fill_preset
         text_message = phrases['fill_presets']
 
-    if cur_state == 'Preset:system':
-        text_message += f'▶️ <b>Система</b> {"" if system is None else system}\n'
-    else:
-        text_message += f'    Система {"" if system is None else system}\n'
+    system = '' if not system else system
+    device = '' if not device else device
+    browser = '' if not browser else browser
 
-    if cur_state == 'Preset:device':
-        text_message += f'▶️ <b>Устройство</b> {"" if device is None else device}\n'
+    if state_status == 'system':
+        text_message += phrases['select_system'] + f'{system}\n'
     else:
-        text_message += f'    Устройство {"" if device is None else device}\n'
+        text_message += phrases['no_select_system'] + f'{system}\n'
 
-    if cur_state == 'Preset:browser':
-        text_message += f'▶️ <b>Браузер</b> {"" if browser is None else browser}\n'
+    if state_status == 'device':
+        text_message += phrases['select_device'] + f'{device}\n'
     else:
-        text_message += f'    Браузер {"" if browser is None else browser}\n'
+        text_message += phrases['no_select_device'] + f'{device}\n'
+
+    if state_status == 'browser':
+        text_message += phrases['select_browser'] + f'{browser}\n'
+    else:
+        text_message += phrases['no_select_browser'] + f'{browser}\n'
 
     await bot.edit_message_text(
         chat_id=edit_chat_id,
@@ -92,6 +111,10 @@ async def show_preset(state: FSMContext) -> None:
 @rt.callback_query(F.data == 'start_fill_preset')
 async def start_fill_preset(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
+
+    if not await check_state(callback=callback, state=state):
+        return
+
     await state.set_state(Preset.system)
 
     await bot.edit_message_text(
@@ -109,6 +132,7 @@ async def start_fill_preset(callback: CallbackQuery, state: FSMContext):
 @rt.message(Preset.system)
 async def fill_preset(message: Message, state: FSMContext):
     await state.update_data(system=message.text)
+    await message.answer(phrases['put_system'])
     await state.set_state(Preset.device)
     await show_preset(state)
 
@@ -116,6 +140,7 @@ async def fill_preset(message: Message, state: FSMContext):
 @rt.message(Preset.device)
 async def fill_preset(message: Message, state: FSMContext):
     await state.update_data(device=message.text)
+    await message.answer(phrases['put_device'])
     await state.set_state(Preset.browser)
     await show_preset(state)
 
@@ -123,34 +148,31 @@ async def fill_preset(message: Message, state: FSMContext):
 @rt.message(Preset.browser)
 async def fill_preset(message: Message, state: FSMContext):
     await state.update_data(browser=message.text)
+    await message.answer(phrases['put_browser'])
     await state.set_state(Preset.system)
     await show_preset(state)
 
 
-@rt.callback_query(F.data == 'goto_preset_system')
+@rt.callback_query(F.data.startswith('goto_preset_'))
 async def fill_preset(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
-    await state.set_state(Preset.system)
-    await show_preset(state)
 
+    if not await check_state(callback=callback, state=state):
+        return
 
-@rt.callback_query(F.data == 'goto_preset_device')
-async def fill_preset(callback: CallbackQuery, state: FSMContext):
-    await callback.answer()
-    await state.set_state(Preset.device)
-    await show_preset(state)
+    goto_status = callback.data.replace('goto_preset_', '')
 
-
-@rt.callback_query(F.data == 'goto_preset_browser')
-async def fill_preset(callback: CallbackQuery, state: FSMContext):
-    await callback.answer()
-    await state.set_state(Preset.browser)
+    await state.set_state(preset_status[goto_status])
     await show_preset(state)
 
 
 @rt.callback_query(F.data == 'end_fill_preset')
 async def end_fill_preset(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
+
+    if not await check_state(callback=callback, state=state):
+        return
+
     data = await state.get_data()
     edit_message_id = data.get('edit_message_id')
     bug_message: Message = data.get('bug_message')
@@ -179,6 +201,10 @@ async def end_fill_preset(callback: CallbackQuery, state: FSMContext):
 @rt.callback_query(F.data.startswith('preset_'))
 async def call_preset(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
+
+    if not await check_state(callback=callback, state=state):
+        return
+
     preset_id = int(callback.data.replace('preset_', ''))
     data = await state.get_data()
     bug_message: Message = data.get('bug_message')

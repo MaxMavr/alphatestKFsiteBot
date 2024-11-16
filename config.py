@@ -2,7 +2,6 @@ from API_TOKEN import *
 
 import os
 from random import randint
-from math import ceil
 
 import asyncio
 from aiogram import Bot, Dispatcher, Router, F
@@ -12,7 +11,7 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
 from aiogram.enums import ContentType
 
-from init_config import phrases
+from init_config import phrases, ceil
 
 import db_interfaces.bugs as bugs
 import db_interfaces.presets as presets
@@ -32,6 +31,13 @@ class Preset(StatesGroup):
     system = State()
     device = State()
     browser = State()
+
+
+preset_status = {
+    'system': Preset.system,
+    'device': Preset.device,
+    'browser': Preset.browser
+}
 
 
 class IsBaned(BaseFilter):

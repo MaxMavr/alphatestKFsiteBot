@@ -1,5 +1,8 @@
 from init_config import *
 
+MAX_NUMBER_BUTTON = 24
+
+
 site = InlineKeyboardMarkup(
     inline_keyboard=[
         [InlineKeyboardButton(text=phrases['button_site'], url='http://kfprod.ru/all-pages')]
@@ -61,12 +64,21 @@ async def make_pages_kb(page: int, max_page: int, name: str) -> InlineKeyboardMa
 
 async def make_presets_kb(presets: list) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
+
     for pst in presets:
         kb.button(text=f'{pst[2]}, {pst[3]}, {pst[4]}',
                   callback_data=f'preset_{pst[0]}')
-    kb.button(text=phrases['button_new_preset'], callback_data='start_fill_preset')
+
+    if len(presets) + 1 < MAX_NUMBER_BUTTON:
+        kb.button(text=phrases['button_new_preset'], callback_data='start_fill_preset')
+
     kb.button(text=phrases['button_cancel'], callback_data='cancel')
-    return kb.adjust(1).as_markup(resize_keyboard=True)
+
+    print(len(presets) + 2)
+
+    adjust_value = ceil((len(presets) + 1) / 8)
+
+    return kb.adjust(adjust_value).as_markup(resize_keyboard=True)
 
 
 async def make_del_presets_kb(presets: list) -> InlineKeyboardMarkup:
@@ -74,4 +86,7 @@ async def make_del_presets_kb(presets: list) -> InlineKeyboardMarkup:
     for pst in presets:
         kb.button(text=f'{pst[2]}, {pst[3]}, {pst[4]}',
                   callback_data=f'del_preset_{pst[0]}')
-    return kb.adjust(1).as_markup(resize_keyboard=True)
+
+    adjust_value = ceil(len(presets) / 8)
+
+    return kb.adjust(adjust_value).as_markup(resize_keyboard=True)
