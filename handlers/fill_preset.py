@@ -11,7 +11,7 @@ async def check_state(message: Message = None,
 
     data = await state.get_data()
 
-    if not data.get('bug_message'):
+    if not data.get('bug_messages'):
         if callback:
             await bot.edit_message_text(
                 chat_id=callback.message.chat.id,
@@ -28,23 +28,25 @@ async def check_state(message: Message = None,
     return True
 
 
-async def send_bug(message: Message, preset_id: int):
+async def send_bug(messages: List[Message], preset_id: int):
     description = ''
 
-    if message.video:
+    if messages[0].video:
         description += '📼 '
-    if message.audio:
+    if messages[0].audio:
         description += '🗣 '
-    if message.video_note:
+    if messages[0].video_note:
         description += '📼 '
-    if message.document:
+    if messages[0].document:
         description += '📄 '
-    if message.voice:
+    if messages[0].voice:
         description += '🗣 '
-    if message.photo:
+    if messages[0].photo:
         description += '📷 '
+    if messages[0].media_group_id:
+        description += '📷📼🗣 '
 
-    msg_text = message.caption if message.caption else message.text
+    msg_text = messages[0].caption if messages[0].caption else messages[0].text
 
     if msg_text:
         description += msg_text[:MAX_NUMBER_CHAR]
@@ -52,14 +54,19 @@ async def send_bug(message: Message, preset_id: int):
         if len(msg_text) > MAX_NUMBER_CHAR:
             description += '...'
 
+    msgs_id = []
+    for msg in messages:
+        msgs_id.append(msg.message_id)
+    msgs_id = dumps(msgs_id)
+
     bugs.add(
-        user_id=message.chat.id,
-        message_id=message.message_id,
+        user_id=messages[0].chat.id,
+        messages_id=msgs_id,
         preset_id=preset_id,
         description=description
     )
 
-    await message.answer(phrases['add_bug'])
+    await messages[0].answer(phrases['add_bug'])
 
 
 async def show_preset(state: FSMContext) -> None:
@@ -100,12 +107,26 @@ async def show_preset(state: FSMContext) -> None:
     else:
         text_message += phrases['no_select_browser'] + f'{browser}\n'
 
-    await bot.edit_message_text(
-        chat_id=edit_chat_id,
-        message_id=edit_message_id,
-        text=text_message,
-        reply_markup=edit_kb
-    )
+    if '' in [system, device, browser]:
+        await bot.edit_message_text(
+            chat_id=edit_chat_id,
+            message_id=edit_message_id,
+            text=text_message,
+            reply_markup=edit_kb
+        )
+    else:
+        await bot.delete_message(
+            chat_id=edit_chat_id,
+            message_id=edit_message_id
+        )
+
+        message = await bot.send_message(
+            chat_id=edit_chat_id,
+            text=text_message,
+            reply_markup=edit_kb
+        )
+
+        await state.update_data(edit_message_id=message.message_id)
 
 
 @rt.callback_query(F.data == 'start_fill_preset')
@@ -175,7 +196,7 @@ async def end_fill_preset(callback: CallbackQuery, state: FSMContext):
 
     data = await state.get_data()
     edit_message_id = data.get('edit_message_id')
-    bug_message: Message = data.get('bug_message')
+    bug_messages: List[Message] = data.get('bug_messages')
     edit_chat_id = data.get('edit_chat_id')
     system = data.get('system')
     device = data.get('device')
@@ -188,7 +209,7 @@ async def end_fill_preset(callback: CallbackQuery, state: FSMContext):
                    f'    Браузер {browser}\n'
     preset_id = presets.add(callback.from_user.id, system, device, browser)
 
-    await send_bug(bug_message, preset_id)
+    await send_bug(bug_messages, preset_id)
 
     await bot.edit_message_text(
         chat_id=edit_chat_id,
@@ -207,7 +228,7 @@ async def call_preset(callback: CallbackQuery, state: FSMContext):
 
     preset_id = int(callback.data.replace('preset_', ''))
     data = await state.get_data()
-    bug_message: Message = data.get('bug_message')
+    bug_messages: List[Message] = data.get('bug_messages')
     await state.clear()
 
     await bot.edit_message_text(
@@ -217,4 +238,4 @@ async def call_preset(callback: CallbackQuery, state: FSMContext):
         reply_markup=None
     )
 
-    await send_bug(bug_message, preset_id)
+    await send_bug(bug_messages, preset_id)

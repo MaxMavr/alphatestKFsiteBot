@@ -73,9 +73,6 @@ async def make_presets_kb(presets: list) -> InlineKeyboardMarkup:
         kb.button(text=phrases['button_new_preset'], callback_data='start_fill_preset')
 
     kb.button(text=phrases['button_cancel'], callback_data='cancel')
-
-    print(len(presets) + 2)
-
     adjust_value = ceil((len(presets) + 1) / 8)
 
     return kb.adjust(adjust_value).as_markup(resize_keyboard=True)

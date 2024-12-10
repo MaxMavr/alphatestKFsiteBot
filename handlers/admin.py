@@ -216,17 +216,18 @@ async def cmd_get_bug(message: Message):
     if bug_id == -1:
         return
 
-    _, user_id, message_id, preset_id, _, _ = bugs.get_from_id(bug_id)
+    _, user_id, messages_id, preset_id, _, _ = bugs.get_from_id(bug_id)
+    messages_id = loads(messages_id)
     user_preset = presets.get_from_id(preset_id)
 
     text_message = '<i>' + '\n'.join(user_preset) + '</i>'
 
     await message.answer(text_message)
-
-    await bot.forward_message(
-        chat_id=message.chat.id,
-        from_chat_id=user_id,
-        message_id=message_id)
+    for msg_id in messages_id:
+        await bot.forward_message(
+            chat_id=message.chat.id,
+            from_chat_id=user_id,
+            message_id=msg_id)
 
 
 @rt.message(Command(commands='del'), IsAdmin())  # /del
