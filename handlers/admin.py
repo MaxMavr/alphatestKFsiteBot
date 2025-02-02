@@ -351,3 +351,18 @@ async def call_clear_user(callback: CallbackQuery):
     user_id = int(callback.data.replace('clear_user_', ''))
     presets.delete_from_user(user_id)
     bugs.delete_from_user(user_id)
+
+
+async def reminder():
+    fixs = bugs.get_fix()
+
+    if len(fixs) == 0:
+        return
+
+    fixs_page, count_pages = await split_list2page(fixs, PAGE_SIZE_BUG, 1)
+
+    text_message = await make_page_title('fixs_page_title', 1, count_pages)
+    text_message += await make_bugs_list(fixs_page)
+    fixs_kb = await kb.make_pages_kb(1, count_pages, 'fixs')
+
+    await bot.send_message(chat_id=0, text=text_message, reply_markup=fixs_kb)

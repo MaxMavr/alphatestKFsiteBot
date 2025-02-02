@@ -22,6 +22,9 @@ import db_interfaces.users as users
 import keyboards as kb
 
 
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
+
 try:
     bot: Bot = Bot(token=API_TOKEN, parse_mode='HTML')
 except TypeError:

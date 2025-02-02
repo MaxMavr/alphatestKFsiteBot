@@ -11,7 +11,13 @@ rt: Router = Router()
                                 ContentType.VIDEO_NOTE}))
 async def catch_bug(message: Message, state: FSMContext):
 
-    if '#sug' in message.text or '#sug' in message.caption:
+    is_sug = False
+    if message.text:
+        is_sug = '#sug' in message.text
+    if message.caption:
+        is_sug = '#sug' in message.caption
+
+    if is_sug:
         await message.answer(phrases['sug'])
         await message.forward(MAIN_ADMIN_ID)
         return
